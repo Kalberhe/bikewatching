@@ -15,4 +15,18 @@ const map = new mapboxgl.Map({
 
 map.on("load", () => {
   console.log("Map has loaded!");
+  map.addSource("bike-network", {
+  type: "geojson",
+  data: "https://kalberhe.github.io/bikewatching/data/Existing_Bike_Network_2022.geojson"
+});
+
+map.addLayer({
+  id: "bike-network-layer",
+  type: "line",
+  source: "bike-network",
+  paint: {
+    "line-color": "#0080ff",
+    "line-width": 2
+  }
+});
 });
