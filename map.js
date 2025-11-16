@@ -1,6 +1,6 @@
 
 let timeFilter = -1;   
-let allTrips = [];     
+let allTrips = [];    
 
 function formatTime(minutes) {
   const date = new Date(0, 0, 0, 0, minutes);
@@ -10,7 +10,6 @@ function formatTime(minutes) {
 function minutesSinceMidnight(date) {
   return date.getHours() * 60 + date.getMinutes();
 }
-
 
 console.log("Mapbox GL JS Loaded:", mapboxgl);
 
@@ -25,36 +24,6 @@ const map = new mapboxgl.Map({
   minZoom: 5,
   maxZoom: 18,
 });
-
-// --- Step 5.3: filter trips by time slider and update dots ---
-function updateScatterPlot() {
-  if (!allTrips.length) {
-    // trips not loaded yet
-    return;
-  }
-
-  // No filter => all trips
-  if (timeFilter === -1) {
-    recomputeFromTrips(allTrips);
-    return;
-  }
-
-  // Filter: keep trips where start OR end time is within 60 minutes
-  const filteredTrips = allTrips.filter((trip) => {
-    const startMinutes = minutesSinceMidnight(trip.started_at);
-    const endMinutes = minutesSinceMidnight(trip.ended_at);
-
-    return (
-      Math.abs(startMinutes - timeFilter) <= 60 ||
-      Math.abs(endMinutes - timeFilter) <= 60
-    );
-  });
-
-  console.log("Filtered trips:", filteredTrips.length);
-
-  recomputeFromTrips(filteredTrips);
-}
-
 
 map.on("load", () => {
   console.log("Map has loaded!");
@@ -100,12 +69,10 @@ map.on("load", () => {
 
   const stationGroup = svg.append("g").attr("class", "stations");
 
-  
   const tooltip = d3
     .select("body")
     .append("div")
     .attr("class", "tooltip hidden");
-
 
   function updatePositions() {
     stationGroup
@@ -114,23 +81,20 @@ map.on("load", () => {
       .attr("cy", (d) => map.project([d.lon, d.lat]).y);
   }
 
-function renderStations() {
-  stationGroup
-    .selectAll("circle")
-    .data(window.stations)
-    .join("circle")
-    .attr("r", 6);   
-    
+  function renderStations() {
+    stationGroup
+      .selectAll("circle")
+      .data(window.stations)
+      .join("circle")
+      .attr("r", 6); 
 
-  updatePositions();
-}
-
-
+    updatePositions();
+  }
 
   map.on("move", updatePositions);
   map.on("moveend", updatePositions);
 
-  let radiusScale; 
+  let radiusScale;
 
   const flowColor = d3
     .scaleQuantize()
@@ -141,146 +105,159 @@ function renderStations() {
       "#1a9850", 
     ]);
 
-    function applyTrafficSizeAndColor() {
-    const circles = stationGroup
-      .selectAll("circle")
+  function applyTrafficSizeAndColor() {
+    const circles = stationGroup.selectAll("circle");
+
+    circles
       .transition()
       .duration(800)
       .attr("r", (d) =>
-        radiusScale ? radiusScale(d.totalTraffic) : 4
-      ) 
+        radiusScale ? radiusScale(d.totalTraffic || 0) : 4
+      )
       .attr("fill", (d) =>
         d.flowRatio === undefined ? "red" : flowColor(d.flowRatio)
-      ); 
-
-    stationGroup
-  .selectAll("circle")
-  .on("mouseenter", (event, d) => {
-    tooltip
-      .classed("hidden", false)
-      .html(
-        `<strong>${d.name}</strong><br/>
-         Total trips: ${d.totalTraffic}<br/>
-         Arrivals: ${d.arrivals}<br/>
-         Departures: ${d.departures}`
       );
-  })
-  .on("mousemove", (event, d) => {
-    tooltip
-      .style("left", event.pageX + 10 + "px")
-      .style("top", event.pageY + 10 + "px");
-  })
-  .on("mouseleave", () => {
-    tooltip.classed("hidden", true);
-  });
 
+    circles
+      .on("mouseenter", (event, d) => {
+        tooltip
+          .classed("hidden", false)
+          .html(
+            `<strong>${d.name}</strong><br/>
+             Total trips: ${d.totalTraffic}<br/>
+             Arrivals: ${d.arrivals}<br/>
+             Departures: ${d.departures}`
+          );
+      })
+      .on("mousemove", (event) => {
+        tooltip
+          .style("left", event.pageX + 10 + "px")
+          .style("top", event.pageY + 10 + "px");
+      })
+      .on("mouseleave", () => {
+        tooltip.classed("hidden", true);
+      });
   }
 
+  function recomputeFromTrips(trips) {
+    const departures = d3.rollup(
+      trips,
+      (v) => v.length,
+      (d) => String(d.start_station_id)
+    );
+
+    const arrivals = d3.rollup(
+      trips,
+      (v) => v.length,
+      (d) => String(d.end_station_id)
+    );
+
+    window.stations.forEach((st) => {
+      const id = String(st.id); 
+
+      st.departures = departures.get(id) ?? 0;
+      st.arrivals = arrivals.get(id) ?? 0;
+      st.totalTraffic = st.departures + st.arrivals;
+
+      st.flowRatio =
+        st.totalTraffic === 0
+          ? 0.5
+          : st.arrivals / st.totalTraffic;
+    });
+
+    radiusScale = d3
+      .scaleSqrt()
+      .domain([0, d3.max(window.stations, (d) => d.totalTraffic)])
+      .range([2, 25]);
+
+    console.log(
+      "Max totalTraffic (current view):",
+      d3.max(window.stations, (d) => d.totalTraffic)
+    );
+
+    applyTrafficSizeAndColor();
+  }
 
   function loadTraffic() {
     d3.csv(
       "https://kalberhe.github.io/bikewatching/bluebikes-traffic-2024-03.csv",
-      d3.autoType
+      (trip) => {
+        trip.started_at = new Date(trip.started_at);
+        trip.ended_at = new Date(trip.ended_at);
+        return trip;
+      }
     ).then((trips) => {
       console.log("Trips loaded:", trips.length);
       console.log("Example trip row:", trips[0]);
       console.log("Trip keys:", Object.keys(trips[0]));
 
-      const startKey =
-        "start_station_id" in trips[0]
-          ? "start_station_id"
-          : "start_station";
-      const endKey =
-        "end_station_id" in trips[0]
-          ? "end_station_id"
-          : "end_station";
+      allTrips = trips; 
 
-      console.log("Using keys:", { startKey, endKey });
-
-      const departures = d3.rollup(
-        trips,
-        (v) => v.length,
-        (d) => String(d[startKey])
-      );
-
-      const arrivals = d3.rollup(
-        trips,
-        (v) => v.length,
-        (d) => String(d[endKey])
-      );
-
-      console.log("Unique departure stations:", departures.size);
-      console.log("Unique arrival stations:", arrivals.size);
-
-      window.stations.forEach((st) => {
-        const id = String(st.id);
-
-        st.departures = departures.get(id) ?? 0;
-        st.arrivals = arrivals.get(id) ?? 0;
-        st.totalTraffic = st.departures + st.arrivals;
-
-        st.flowRatio =
-          st.totalTraffic === 0
-            ? 0.5
-            : st.arrivals / st.totalTraffic;
-      });
-
-      console.log(
-        "Max totalTraffic:",
-        d3.max(window.stations, (d) => d.totalTraffic)
-      );
-
-      radiusScale = d3
-        .scaleSqrt()
-        .domain([0, d3.max(window.stations, (d) => d.totalTraffic)])
-        .range([2, 25]);
-
-      applyTrafficSizeAndColor();
+      recomputeFromTrips(allTrips);
     });
   }
 
+  fetch("https://dsc106.com/labs/lab07/data/bluebikes-stations.json")
+    .then((response) => response.json())
+    .then((json) => {
+      const rawStations = json.data.stations;
 
-fetch("https://dsc106.com/labs/lab07/data/bluebikes-stations.json")
-  .then((response) => response.json())
-  .then((json) => {
-    const rawStations = json.data.stations;
+      window.stations = rawStations.map((st) => ({
+        id: String(st.short_name), 
+        name: st.name,
+        lat: st.lat,
+        lon: st.lon,
+        capacity: st.capacity,
+      }));
 
-    window.stations = rawStations.map((st) => ({
-      id: String(st.short_name),  
-      name: st.name,
-      lat: st.lat,
-      lon: st.lon,
-      capacity: st.capacity,
-    }));
+      console.log("First station:", window.stations[0]);
 
-    console.log("First station:", window.stations[0]);
+      renderStations();
+      loadTraffic(); 
+    });
 
-    renderStations();
-    loadTraffic();
-  });
   const timeSlider = document.getElementById("time-slider");
   const selectedTime = document.getElementById("selected-time");
   const anyTimeLabel = document.getElementById("any-time");
 
-  function updateTimeDisplay() {
-    timeFilter = Number(timeSlider.value);
-
-    if (timeFilter === -1) {
- 
-      selectedTime.textContent = "";
-      anyTimeLabel.style.display = "block";
-    } else {
-  
-      selectedTime.textContent = formatTime(timeFilter);
-      anyTimeLabel.style.display = "none";
+  function updateScatterPlotForTime() {
+    if (!allTrips.length) {
+      console.log("Trips not loaded yet; skip filter.");
+      return;
     }
 
-    updateScatterPlot();
+    if (timeFilter === -1) {
+      selectedTime.textContent = "";
+      anyTimeLabel.style.display = "block";
+
+      recomputeFromTrips(allTrips);
+      return;
+    }
+
+    selectedTime.textContent = formatTime(timeFilter);
+    anyTimeLabel.style.display = "none";
+
+    const filteredTrips = allTrips.filter((trip) => {
+      const startMinutes = minutesSinceMidnight(trip.started_at);
+      const endMinutes = minutesSinceMidnight(trip.ended_at);
+
+      return (
+        Math.abs(startMinutes - timeFilter) <= 60 ||
+        Math.abs(endMinutes - timeFilter) <= 60
+      );
+    });
+
+    console.log("Filtered trips:", filteredTrips.length);
+    recomputeFromTrips(filteredTrips);
   }
 
-  timeSlider.addEventListener("input", updateTimeDisplay);
+  function onSliderInput() {
+    timeFilter = Number(timeSlider.value);
+    updateScatterPlotForTime();
+  }
 
-  updateTimeDisplay();
+  timeSlider.addEventListener("input", onSliderInput);
 
-
+  
+  updateScatterPlotForTime();
 });
