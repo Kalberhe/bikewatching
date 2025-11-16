@@ -1,6 +1,11 @@
 
 let timeFilter = -1;   
-let allTrips = [];    
+let allTrips = [];  
+ 
+const stationFlow = d3.scaleQuantize()
+  .domain([0, 1])
+  .range([0, 0.5, 1]);
+
 
 function formatTime(minutes) {
   const date = new Date(0, 0, 0, 0, minutes);
@@ -24,6 +29,7 @@ const map = new mapboxgl.Map({
   minZoom: 5,
   maxZoom: 18,
 });
+
 
 map.on("load", () => {
   console.log("Map has loaded!");
@@ -105,39 +111,42 @@ map.on("load", () => {
       "#1a9850", 
     ]);
 
-  function applyTrafficSizeAndColor() {
-    const circles = stationGroup.selectAll("circle");
+function applyTrafficSizeAndColor() {
+  stationGroup
+    .selectAll("circle")
+    .transition()
+    .duration(800)
+    .attr("r", (d) =>
+      radiusScale ? radiusScale(d.totalTraffic) : 4
+    )
 
-    circles
-      .transition()
-      .duration(800)
-      .attr("r", (d) =>
-        radiusScale ? radiusScale(d.totalTraffic || 0) : 4
-      )
-      .attr("fill", (d) =>
-        d.flowRatio === undefined ? "red" : flowColor(d.flowRatio)
-      );
+    .style("--departure-ratio", (d) => {
+      if (!d.totalTraffic) return 0.5;       
+      return stationFlow(d.departures / d.totalTraffic);
+    });
 
-    circles
-      .on("mouseenter", (event, d) => {
-        tooltip
-          .classed("hidden", false)
-          .html(
-            `<strong>${d.name}</strong><br/>
-             Total trips: ${d.totalTraffic}<br/>
-             Arrivals: ${d.arrivals}<br/>
-             Departures: ${d.departures}`
-          );
-      })
-      .on("mousemove", (event) => {
-        tooltip
-          .style("left", event.pageX + 10 + "px")
-          .style("top", event.pageY + 10 + "px");
-      })
-      .on("mouseleave", () => {
-        tooltip.classed("hidden", true);
-      });
-  }
+  stationGroup
+    .selectAll("circle")
+    .on("mouseenter", (event, d) => {
+      tooltip
+        .classed("hidden", false)
+        .html(
+          `<strong>${d.name}</strong><br/>
+           Total trips: ${d.totalTraffic}<br/>
+           Arrivals: ${d.arrivals}<br/>
+           Departures: ${d.departures}`
+        );
+    })
+    .on("mousemove", (event) => {
+      tooltip
+        .style("left", event.pageX + 10 + "px")
+        .style("top", event.pageY + 10 + "px");
+    })
+    .on("mouseleave", () => {
+      tooltip.classed("hidden", true);
+    });
+}
+
 
   function recomputeFromTrips(trips) {
     const departures = d3.rollup(
@@ -159,10 +168,10 @@ map.on("load", () => {
       st.arrivals = arrivals.get(id) ?? 0;
       st.totalTraffic = st.departures + st.arrivals;
 
-      st.flowRatio =
-        st.totalTraffic === 0
-          ? 0.5
-          : st.arrivals / st.totalTraffic;
+        st.flowRatio =
+    st.totalTraffic === 0
+      ? 0.5
+      : st.departures / st.totalTraffic;
     });
 
     radiusScale = d3

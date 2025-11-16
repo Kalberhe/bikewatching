@@ -1,50 +1,91 @@
-html,
-body {
-  margin: 0;
-  padding: 5px;
-  height: 100%;
-  width: 100%;
-}
-
-
+/* Map container and canvas */
 #map {
-  width: 100%;
-  height: 600px;
-  position: relative;
+  height: 75vh;
+  max-height: 720px;
+  border-radius: 6px;
+  overflow: hidden;
 }
 
+#map .mapboxgl-canvas {
+  width: 100%;
+  height: 100%;
+}
+
+/* SVG overlay sits on top of the map */
 .stations-overlay {
   position: absolute;
-  top: 0;
-  left: 0;
+  inset: 0;
   width: 100%;
   height: 100%;
+  pointer-events: none; /* circles re-enable events */
 }
 
+/* Station circles: style via CSS, not JS */
+.stations circle {
+  fill-opacity: 0.6;
+  stroke: white;
+  stroke-width: 1px;
+  pointer-events: auto; /* needed for tooltip */
+}
+
+/* Color system for circles + legend */
+:root {
+  --color-departures: steelblue;
+  --color-arrivals: darkorange;
+}
+
+/* Use same mixing for stations and legend boxes */
+/* Compute the shared color based on --departure-ratio */
+#map svg circle,
+.legend > div {
+  --color: color-mix(
+    in oklch,
+    var(--color-departures) calc(100% * var(--departure-ratio)),
+    var(--color-arrivals)
+  );
+}
+
+/* Circles use fill */
+#map svg circle {
+  fill: var(--color);
+}
+
+/* Legend boxes use background-color */
+.legend > div {
+  background-color: var(--color);
+  color: white;
+}
+
+
+/* Legend layout */
+.legend {
+  display: flex;
+  gap: 4px;
+  margin-block: 0.5rem 1rem;
+  font-size: 0.85rem;
+}
+
+.legend > div {
+  flex: 1;
+  padding: 0.25rem 0.75rem;
+  text-align: center;
+  color: white;
+  border-radius: 4px;
+}
+
+/* Tooltip */
 .tooltip {
   position: absolute;
-  background: white;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  padding: 6px 10px;
-  font-size: 12px;
   pointer-events: none;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 0.4rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  line-height: 1.3;
   z-index: 10;
 }
 
 .tooltip.hidden {
   display: none;
 }
-
-.stations circle {
-  fill: steelblue;
-  fill-opacity: 0.6;   
-  stroke: white;
-  stroke-width: 1px;
-}
-
-
-
-
-

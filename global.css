@@ -1,10 +1,49 @@
-body {
-  font: 100%/1.5 system-ui, sans-serif;
-  display: flex;
-  flex-flow: column;
-  max-width: 80em;
-  min-height: 100vh;
+
+/* Basic page layout */
+*,
+*::before,
+*::after {
   box-sizing: border-box;
-  margin: auto;
-  padding: 1em;
+}
+
+body {
+  margin: 0;
+  padding: 0 1rem 1.5rem;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  color: #222;
+  background: #fff;
+}
+
+h1 {
+  margin: 0.5rem 0;
+}
+
+/* Header layout + time filter */
+header {
+  display: flex;
+  gap: 1rem;
+  align-items: baseline;
+  margin-block: 0.75rem 0.5rem;
+}
+
+header .time-filter {
+  margin-left: auto;
+  font-size: 0.95rem;
+}
+
+#selected-time,
+#any-time {
+  display: block;
+}
+
+#any-time {
+  opacity: 0.7;
+  font-style: italic;
+  font-size: 0.9em;
+}
+
+/* Paragraph above map */
+p {
+  margin-block: 0.5rem 0.75rem;
 }
