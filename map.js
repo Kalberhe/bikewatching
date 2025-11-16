@@ -28,10 +28,20 @@ map.on("load", () => {
       type: "line",
       source: "bike-network",
       paint: {
-        "line-color": "#0080ff",
-        "line-width": 3,
-        "line-opacity": 0.8
-      }
+  "line-color": [
+    "match",
+    ["get", "ExisFacil"],
+    "BL", "#0080ff",     
+    "SLM", "#ffa500",    
+    "SBL", "#ff0000",   
+    "DIV", "#00cc44",    
+    "BLD", "#8000ff",     
+    "#999999"            
+  ],
+  "line-width": 3,
+  "line-opacity": 0.9
+}
+
     },
     "waterway-label"
   );
