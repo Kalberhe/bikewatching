@@ -37,6 +37,14 @@ body {
   display: none;
 }
 
+.stations circle {
+  fill: steelblue;
+  fill-opacity: 0.6;   
+  stroke: white;
+  stroke-width: 1px;
+}
+
+
 
 
 

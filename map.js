@@ -70,18 +70,17 @@ map.on("load", () => {
       .attr("cy", (d) => map.project([d.lon, d.lat]).y);
   }
 
-  function renderStations() {
-    stationGroup
-      .selectAll("circle")
-      .data(window.stations)
-      .join("circle")
-      .attr("r", 4) 
-      .attr("fill", "red")
-      .attr("stroke", "white")
-      .attr("stroke-width", 1);
+function renderStations() {
+  stationGroup
+    .selectAll("circle")
+    .data(window.stations)
+    .join("circle")
+    .attr("r", 6);   
+    
 
-    updatePositions();
-  }
+  updatePositions();
+}
+
 
 
   map.on("move", updatePositions);
@@ -111,25 +110,26 @@ map.on("load", () => {
       ); 
 
     stationGroup
-      .selectAll("circle")
-      .on("mouseenter", (event, d) => {
-        tooltip
-          .classed("hidden", false)
-          .html(`
-            <strong>${d.name}</strong><br/>
-            Total trips: ${d.totalTraffic}<br/>
-            Arrivals: ${d.arrivals}<br/>
-            Departures: ${d.departures}
-          `);
-      })
-      .on("mousemove", (event, d) => {
-        tooltip
-          .style("left", event.pageX + 10 + "px")
-          .style("top", event.pageY + 10 + "px");
-      })
-      .on("mouseleave", () => {
-        tooltip.classed("hidden", true);
-      });
+  .selectAll("circle")
+  .on("mouseenter", (event, d) => {
+    tooltip
+      .classed("hidden", false)
+      .html(
+        `<strong>${d.name}</strong><br/>
+         Total trips: ${d.totalTraffic}<br/>
+         Arrivals: ${d.arrivals}<br/>
+         Departures: ${d.departures}`
+      );
+  })
+  .on("mousemove", (event, d) => {
+    tooltip
+      .style("left", event.pageX + 10 + "px")
+      .style("top", event.pageY + 10 + "px");
+  })
+  .on("mouseleave", () => {
+    tooltip.classed("hidden", true);
+  });
+
   }
 
 
