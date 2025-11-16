@@ -15,9 +15,6 @@ const map = new mapboxgl.Map({
 map.on("load", () => {
   console.log("Map has loaded!");
 
-  // -------------------------------
-  // STEP 2 — Bike lanes
-  // -------------------------------
   map.addSource("bike-network", {
     type: "geojson",
     data: "https://kalberhe.github.io/bikewatching/Existing_Bike_Network_2022.geojson",
@@ -52,19 +49,20 @@ map.on("load", () => {
     "waterway-label"
   );
 
-  // -------------------------------
-  // STEP 3.2 — Create SVG Overlay
-  // -------------------------------
-  const container = map.getCanvasContainer();
-
   const svg = d3
-    .select(container)
+    .select(map.getCanvasContainer())
     .append("svg")
     .attr("class", "stations-overlay");
 
   const stationGroup = svg.append("g").attr("class", "stations");
 
-  // Position updater
+  
+  const tooltip = d3
+    .select("body")
+    .append("div")
+    .attr("class", "tooltip hidden");
+
+
   function updatePositions() {
     stationGroup
       .selectAll("circle")
@@ -72,13 +70,12 @@ map.on("load", () => {
       .attr("cy", (d) => map.project([d.lon, d.lat]).y);
   }
 
-  // Renderer
   function renderStations() {
     stationGroup
       .selectAll("circle")
       .data(window.stations)
       .join("circle")
-      .attr("r", 4)
+      .attr("r", 4) 
       .attr("fill", "red")
       .attr("stroke", "white")
       .attr("stroke-width", 1);
@@ -86,11 +83,99 @@ map.on("load", () => {
     updatePositions();
   }
 
-  // -------------------------------
-  // STEP 3.1 — Load Station Data
-  // -------------------------------
+
+  map.on("move", updatePositions);
+  map.on("moveend", updatePositions);
+
+  let radiusScale; 
+
+  const flowColor = d3
+    .scaleQuantize()
+    .domain([0, 1])
+    .range([
+      "#d73027", 
+      "#fee08b", 
+      "#1a9850", 
+    ]);
+
+    function applyTrafficSizeAndColor() {
+    const circles = stationGroup
+      .selectAll("circle")
+      .transition()
+      .duration(800)
+      .attr("r", (d) =>
+        radiusScale ? radiusScale(d.totalTraffic) : 4
+      ) 
+      .attr("fill", (d) =>
+        d.flowRatio === undefined ? "red" : flowColor(d.flowRatio)
+      ); 
+
+    stationGroup
+      .selectAll("circle")
+      .on("mouseenter", (event, d) => {
+        tooltip
+          .classed("hidden", false)
+          .html(`
+            <strong>${d.name}</strong><br/>
+            Total trips: ${d.totalTraffic}<br/>
+            Arrivals: ${d.arrivals}<br/>
+            Departures: ${d.departures}
+          `);
+      })
+      .on("mousemove", (event, d) => {
+        tooltip
+          .style("left", event.pageX + 10 + "px")
+          .style("top", event.pageY + 10 + "px");
+      })
+      .on("mouseleave", () => {
+        tooltip.classed("hidden", true);
+      });
+  }
+
+
+  function loadTraffic() {
+    d3.csv(
+      "https://dsc106.com/labs/lab07/data/bluebikes-traffic-2024-03.csv",
+      d3.autoType
+    ).then((trips) => {
+      console.log("Trips loaded:", trips.length);
+
+      const departures = d3.rollup(
+        trips,
+        (v) => v.length,
+        (d) => String(d.start_station_id)
+      );
+
+      const arrivals = d3.rollup(
+        trips,
+        (v) => v.length,
+        (d) => String(d.end_station_id)
+      );
+
+      window.stations.forEach((st) => {
+        const id = String(st.id);
+
+        st.departures = departures.get(id) ?? 0;
+        st.arrivals = arrivals.get(id) ?? 0;
+        st.totalTraffic = st.departures + st.arrivals;
+
+        st.flowRatio =
+          st.totalTraffic === 0
+            ? 0.5
+            : st.arrivals / st.totalTraffic;
+      });
+
+      radiusScale = d3
+        .scaleSqrt()
+        .domain([0, d3.max(window.stations, (d) => d.totalTraffic)])
+        .range([2, 25]);
+
+      applyTrafficSizeAndColor();
+    });
+  }
+
   fetch("https://dsc106.com/labs/lab07/data/bluebikes-stations.json")
-    .then((r) => r.json())
+    .then((response) => response.json())
     .then((json) => {
       const rawStations = json.data.stations;
 
@@ -102,13 +187,10 @@ map.on("load", () => {
         capacity: st.capacity,
       }));
 
-      console.log("Stations loaded:", window.stations);
+      console.log("Stations loaded:", window.stations.length);
 
-      // NOW render stations
       renderStations();
-    });
 
-  // Keep repositioning circles on map move
-  map.on("move", updatePositions);
-  map.on("moveend", updatePositions);
+      loadTraffic();
+    });
 });
