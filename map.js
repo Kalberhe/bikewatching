@@ -135,22 +135,38 @@ map.on("load", () => {
 
   function loadTraffic() {
     d3.csv(
-      "https://dsc106.com/labs/lab07/data/bluebikes-traffic-2024-03.csv",
+      "https://kalberhe.github.io/bikewatching/bluebikes-traffic-2024-03.csv",
       d3.autoType
     ).then((trips) => {
       console.log("Trips loaded:", trips.length);
+      console.log("Example trip row:", trips[0]);
+      console.log("Trip keys:", Object.keys(trips[0]));
+
+      const startKey =
+        "start_station_id" in trips[0]
+          ? "start_station_id"
+          : "start_station";
+      const endKey =
+        "end_station_id" in trips[0]
+          ? "end_station_id"
+          : "end_station";
+
+      console.log("Using keys:", { startKey, endKey });
 
       const departures = d3.rollup(
         trips,
         (v) => v.length,
-        (d) => String(d.start_station_id)
+        (d) => String(d[startKey])
       );
 
       const arrivals = d3.rollup(
         trips,
         (v) => v.length,
-        (d) => String(d.end_station_id)
+        (d) => String(d[endKey])
       );
+
+      console.log("Unique departure stations:", departures.size);
+      console.log("Unique arrival stations:", arrivals.size);
 
       window.stations.forEach((st) => {
         const id = String(st.id);
@@ -165,6 +181,11 @@ map.on("load", () => {
             : st.arrivals / st.totalTraffic;
       });
 
+      console.log(
+        "Max totalTraffic:",
+        d3.max(window.stations, (d) => d.totalTraffic)
+      );
+
       radiusScale = d3
         .scaleSqrt()
         .domain([0, d3.max(window.stations, (d) => d.totalTraffic)])
@@ -174,23 +195,24 @@ map.on("load", () => {
     });
   }
 
-  fetch("https://dsc106.com/labs/lab07/data/bluebikes-stations.json")
-    .then((response) => response.json())
-    .then((json) => {
-      const rawStations = json.data.stations;
 
-      window.stations = rawStations.map((st) => ({
-        id: st.station_id,
-        name: st.name,
-        lat: st.lat,
-        lon: st.lon,
-        capacity: st.capacity,
-      }));
+fetch("https://dsc106.com/labs/lab07/data/bluebikes-stations.json")
+  .then((response) => response.json())
+  .then((json) => {
+    const rawStations = json.data.stations;
 
-      console.log("Stations loaded:", window.stations.length);
+    window.stations = rawStations.map((st) => ({
+      id: String(st.short_name),  
+      name: st.name,
+      lat: st.lat,
+      lon: st.lon,
+      capacity: st.capacity,
+    }));
 
-      renderStations();
+    console.log("First station:", window.stations[0]);
 
-      loadTraffic();
-    });
+    renderStations();
+    loadTraffic();
+  });
+
 });
