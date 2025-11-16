@@ -1,3 +1,17 @@
+
+let timeFilter = -1;   
+let allTrips = [];     
+
+function formatTime(minutes) {
+  const date = new Date(0, 0, 0, 0, minutes);
+  return date.toLocaleString("en-US", { timeStyle: "short" });
+}
+
+function minutesSinceMidnight(date) {
+  return date.getHours() * 60 + date.getMinutes();
+}
+
+
 console.log("Mapbox GL JS Loaded:", mapboxgl);
 
 mapboxgl.accessToken =
@@ -11,6 +25,36 @@ const map = new mapboxgl.Map({
   minZoom: 5,
   maxZoom: 18,
 });
+
+// --- Step 5.3: filter trips by time slider and update dots ---
+function updateScatterPlot() {
+  if (!allTrips.length) {
+    // trips not loaded yet
+    return;
+  }
+
+  // No filter => all trips
+  if (timeFilter === -1) {
+    recomputeFromTrips(allTrips);
+    return;
+  }
+
+  // Filter: keep trips where start OR end time is within 60 minutes
+  const filteredTrips = allTrips.filter((trip) => {
+    const startMinutes = minutesSinceMidnight(trip.started_at);
+    const endMinutes = minutesSinceMidnight(trip.ended_at);
+
+    return (
+      Math.abs(startMinutes - timeFilter) <= 60 ||
+      Math.abs(endMinutes - timeFilter) <= 60
+    );
+  });
+
+  console.log("Filtered trips:", filteredTrips.length);
+
+  recomputeFromTrips(filteredTrips);
+}
+
 
 map.on("load", () => {
   console.log("Map has loaded!");
@@ -214,5 +258,29 @@ fetch("https://dsc106.com/labs/lab07/data/bluebikes-stations.json")
     renderStations();
     loadTraffic();
   });
+  const timeSlider = document.getElementById("time-slider");
+  const selectedTime = document.getElementById("selected-time");
+  const anyTimeLabel = document.getElementById("any-time");
+
+  function updateTimeDisplay() {
+    timeFilter = Number(timeSlider.value);
+
+    if (timeFilter === -1) {
+ 
+      selectedTime.textContent = "";
+      anyTimeLabel.style.display = "block";
+    } else {
+  
+      selectedTime.textContent = formatTime(timeFilter);
+      anyTimeLabel.style.display = "none";
+    }
+
+    updateScatterPlot();
+  }
+
+  timeSlider.addEventListener("input", updateTimeDisplay);
+
+  updateTimeDisplay();
+
 
 });
