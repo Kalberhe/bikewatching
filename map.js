@@ -1,5 +1,3 @@
-import mapboxgl from "https://cdn.jsdelivr.net/npm/mapbox-gl@2.15.0/+esm";
-
 console.log("Mapbox GL JS Loaded:", mapboxgl);
 
 mapboxgl.accessToken = "pk.eyJ1Ijoia2FsYmVyaGUiLCJhIjoiY21pMHp5a2Z1MTVmMDJ3cTY0MWVqeThhMiJ9.ouuEXzVnn7gEK3uWa6pWLw";
@@ -11,7 +9,7 @@ const map = new mapboxgl.Map({
   zoom: 12,
   minZoom: 5,
   maxZoom: 18,
-});
+})
 
 map.on("load", () => {
   console.log("Map has loaded!");
@@ -24,9 +22,10 @@ map.addLayer({
   id: "bike-network-layer",
   type: "line",
   source: "bike-network",
-  paint: {
-    "line-color": "#0080ff",
-    "line-width": 2
-  }
+ paint: {
+  "line-color": "#0080ff",
+  "line-width": 3,
+  "line-opacity": 0.8
+}
 });
 });
