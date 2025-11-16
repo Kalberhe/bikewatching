@@ -13,19 +13,27 @@ const map = new mapboxgl.Map({
 
 map.on("load", () => {
   console.log("Map has loaded!");
+
+  // Add the bike network source (large dataset fix)
   map.addSource("bike-network", {
-  type: "geojson",
-  data: "https://kalberhe.github.io/bikewatching/data/Existing_Bike_Network_2022.geojson"
+    type: "geojson",
+    data: "https://kalberhe.github.io/bikewatching/data/Existing_Bike_Network_2022.geojson",
+    generateId: true
+  });
+
+  // Add the bike lane layer ABOVE labels
+  map.addLayer(
+    {
+      id: "bike-network-layer",
+      type: "line",
+      source: "bike-network",
+      paint: {
+        "line-color": "#0080ff",
+        "line-width": 3,
+        "line-opacity": 0.8
+      }
+    },
+    "waterway-label"
+  );
 });
 
-map.addLayer({
-  id: "bike-network-layer",
-  type: "line",
-  source: "bike-network",
- paint: {
-  "line-color": "#0080ff",
-  "line-width": 3,
-  "line-opacity": 0.8
-}
-});
-});
