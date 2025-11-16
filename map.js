@@ -17,7 +17,7 @@ map.on("load", () => {
   // Add the bike network source (large dataset fix)
   map.addSource("bike-network", {
     type: "geojson",
-    data: "https://kalberhe.github.io/bikewatching/data/Existing_Bike_Network_2022.geojson",
+    data: "https://kalberhe.github.io/bikewatching/Existing_Bike_Network_2022.geojson",
     generateId: true
   });
 
